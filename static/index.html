@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaManager — Instagram Media Downloader & Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23E1306C'><rect width='24' height='24' rx='6' fill='%23111'/><circle cx='12' cy='12' r='4' stroke='url(%23g)' stroke-width='2' fill='none'/><circle cx='17.5' cy='6.5' r='1.2' fill='%23fff'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%23f09433'/><stop offset='50%25' stop-color='%23e6683c'/><stop offset='100%25' stop-color='%23bc1888'/></linearGradient></defs></svg>">
+</head>
+<body>
+    <!-- Background Glows -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <defs>
+                            <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#f09433"/>
+                                <stop offset="50%" stop-color="#dc2743"/>
+                                <stop offset="100%" stop-color="#bc1888"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="2" y="2" width="20" height="20" rx="5.5" stroke="url(#brand-grad)" stroke-width="2" fill="none"/>
+                        <circle cx="12" cy="12" r="4.2" stroke="url(#brand-grad)" stroke-width="2" fill="none"/>
+                        <circle cx="17.5" cy="6.5" r="1.3" fill="#dc2743"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">InstaManager</span>
+                    <span class="brand-badge">PRO WEB</span>
+                </div>
+            </a>
+
+            <nav class="nav-links">
+                <a href="#downloader" class="nav-link active">Downloader</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#features" class="nav-link">Features</a>
+                <button class="nav-btn" onclick="document.getElementById('username-input').focus()">
+                    <span>Start Download</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-wrapper" id="downloader">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                <span>Direct In-Browser Downloader & Organized ZIP Vault</span>
+            </div>
+            <h1 class="hero-title">
+                Download Instagram Content <br>
+                <span class="gradient-text">In Original HD Quality</span>
+            </h1>
+            <p class="hero-subtitle">
+                Enter any public Instagram username or profile link. Preview reels, photos, videos, and carousels right on the web and download single files instantly or package everything into clean folders in one ZIP!
+            </p>
+
+            <!-- Search Card -->
+            <div class="search-card">
+                <form id="search-form" onsubmit="handleSearch(event)">
+                    <div class="input-group">
+                        <div class="input-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </div>
+                        <span class="input-prefix">@</span>
+                        <input 
+                            type="text" 
+                            id="username-input" 
+                            class="search-input" 
+                            placeholder="Enter username or instagram.com/username..." 
+                            autocomplete="off" 
+                            spellcheck="false"
+                            required
+                        >
+                        <button type="submit" id="btn-fetch" class="btn-primary">
+                            <span class="btn-text">Load Media</span>
+                            <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Category Preference Selector -->
+                    <div class="type-filter-chips">
+                        <span class="chips-label">Quick Filter:</span>
+                        <button type="button" class="chip active" data-type="everything" onclick="toggleTypeChip(this)">
+                            <span>🌟 Everything</span>
+                        </button>
+                        <button type="button" class="chip" data-type="photos" onclick="toggleTypeChip(this)">
+                            <span>🖼️ Photos</span>
+                        </button>
+                        <button type="button" class="chip" data-type="reels" onclick="toggleTypeChip(this)">
+                            <span>🎞️ Reels</span>
+                        </button>
+                        <button type="button" class="chip" data-type="videos" onclick="toggleTypeChip(this)">
+                            <span>🎬 Videos</span>
+                        </button>
+                        <button type="button" class="chip" data-type="carousels" onclick="toggleTypeChip(this)">
+                            <span>📸 Carousels</span>
+                        </button>
+                    </div>
+
+                    <!-- Demo Quick Links -->
+                    <div class="demo-links">
+                        <span class="demo-label">Try sample profiles:</span>
+                        <button type="button" class="demo-chip" onclick="setSearchUsername('meenakshidubey1')">@meenakshidubey1</button>
+                        <button type="button" class="demo-chip" onclick="setSearchUsername('instagram')">@instagram</button>
+                        <button type="button" class="demo-chip" onclick="setSearchUsername('natgeo')">@natgeo</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Loading Skeleton -->
+        <section class="loading-section hidden" id="loading-section">
+            <div class="loading-indicator">
+                <div class="spinner-ring"></div>
+                <div class="loading-text-group">
+                    <h3 class="loading-title">Fetching Instagram Profile...</h3>
+                    <p class="loading-subtitle" id="loading-subtitle">Contacting Instagram CDN and organizing media items...</p>
+                </div>
+            </div>
+
+            <!-- Skeleton Grid -->
+            <div class="skeleton-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+        </section>
+
+        <!-- Error Card -->
+        <section class="error-section hidden" id="error-section">
+            <div class="error-card">
+                <div class="error-icon">⚠️</div>
+                <h3 class="error-title" id="error-title">Profile Not Found</h3>
+                <p class="error-desc" id="error-desc">We couldn't reach that Instagram account. Please check the spelling or try another profile.</p>
+                <button class="btn-secondary" onclick="hideError()">Try Another Profile</button>
+            </div>
+        </section>
+
+        <!-- Media Dashboard (Revealed upon fetching) -->
+        <section class="dashboard-section hidden" id="dashboard-section">
+            <!-- Profile Header Card -->
+            <div class="profile-card">
+                <div class="profile-left">
+                    <div class="avatar-wrapper">
+                        <img id="profile-avatar" src="" alt="Profile Avatar" class="profile-avatar" referrerpolicy="no-referrer">
+                        <div class="avatar-ring"></div>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-title-row">
+                            <h2 class="profile-fullname" id="profile-fullname">Name</h2>
+                            <span class="verified-badge hidden" id="verified-badge" title="Verified Account">✓</span>
+                        </div>
+                        <p class="profile-handle" id="profile-handle">@username</p>
+                        <p class="profile-bio" id="profile-bio">Bio description will appear here...</p>
+                        <a href="#" target="_blank" class="profile-link hidden" id="profile-link"></a>
+                    </div>
+                </div>
+
+                <div class="profile-right">
+                    <div class="stats-group">
+                        <div class="stat-box">
+                            <span class="stat-value" id="stat-posts-count">0</span>
+                            <span class="stat-label">Posts</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="stat-followers">0</span>
+                            <span class="stat-label">Followers</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="stat-following">0</span>
+                            <span class="stat-label">Following</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-quick-actions">
+                        <button class="btn-outline-sm" id="btn-download-avatar" onclick="downloadAvatar()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Download Avatar</span>
+                        </button>
+                        <button class="btn-outline-sm" id="btn-export-json" onclick="exportProfileJson()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                            <span>Profile JSON</span>
+                        </button>
+                        <button class="btn-outline-sm" id="btn-save-disk" onclick="saveToDisk()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            <span>Save to PC Folder</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Control Toolbar -->
+            <div class="bulk-toolbar">
+                <div class="toolbar-left">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)">
+                        <span class="custom-check"></span>
+                        <span id="select-count-text">Select All (0 items)</span>
+                    </label>
+                </div>
+
+                <div class="toolbar-center">
+                    <!-- Tab Navigation -->
+                    <div class="filter-tabs">
+                        <button class="tab-btn active" data-tab="all" onclick="filterGallery('all')">
+                            <span>🌟 All</span>
+                            <span class="tab-count" id="count-all">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="photos" onclick="filterGallery('photos')">
+                            <span>🖼️ Photos</span>
+                            <span class="tab-count" id="count-photos">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="reels" onclick="filterGallery('reels')">
+                            <span>🎞️ Reels</span>
+                            <span class="tab-count" id="count-reels">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="videos" onclick="filterGallery('videos')">
+                            <span>🎬 Videos</span>
+                            <span class="tab-count" id="count-videos">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="carousels" onclick="filterGallery('carousels')">
+                            <span>📸 Carousels</span>
+                            <span class="tab-count" id="count-carousels">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <button class="btn-download-selected hidden" id="btn-download-selected" onclick="downloadSelectedZip()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span id="selected-btn-text">Download Selected (0)</span>
+                    </button>
+
+                    <button class="btn-zip-all" id="btn-zip-all" onclick="downloadAllZip()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Download All as ZIP</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empty Tab State -->
+            <div class="empty-gallery hidden" id="empty-gallery">
+                <div class="empty-icon">📭</div>
+                <h4 class="empty-title">No Media Found in this Category</h4>
+                <p class="empty-subtitle">Try switching to the "All" tab to view all loaded posts.</p>
+            </div>
+
+            <!-- Media Gallery Grid -->
+            <div class="media-grid" id="media-grid">
+                <!-- Dynamically populated media cards -->
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="info-section" id="how-it-works">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">Three easy steps to download any Instagram media in original quality</p>
+
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <div class="step-icon">🔍</div>
+                    <h3 class="step-title">Enter Username</h3>
+                    <p class="step-desc">Type any public Instagram username or paste the profile link into the search bar above.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <div class="step-icon">👁️</div>
+                    <h3 class="step-title">Preview & Select</h3>
+                    <p class="step-desc">View photos, watch reels and videos in full quality, and pick exactly the items you want.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <div class="step-icon">📦</div>
+                    <h3 class="step-title">Download Instantly</h3>
+                    <p class="step-desc">Download single files in 1 click or download an organized ZIP file separated into clean folders.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <section class="features-section" id="features">
+            <h2 class="section-title">Why Use InstaManager?</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon-box grad-1">⚡</div>
+                    <h3>Fast In-Browser Downloads</h3>
+                    <p>No waiting in queues or slow terminal loops. Files download straight to your browser at full speed.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box grad-2">📁</div>
+                    <h3>Organized Folder ZIP</h3>
+                    <p>ZIP downloads are pre-categorized into photos, videos, reels, carousels, and profile details.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box grad-3">✨</div>
+                    <h3>Original Resolution</h3>
+                    <p>Fetch media directly from Instagram's content delivery servers without quality compression.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box grad-4">🛡️</div>
+                    <h3>100% Free & Safe</h3>
+                    <p>No account or Instagram login required for public accounts. Your data never leaves your computer.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Lightbox / Preview Modal -->
+    <div class="modal-overlay hidden" id="preview-modal" onclick="closePreviewModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closePreviewModal()">✕</button>
+            <div class="modal-media-wrapper" id="modal-media-wrapper">
+                <!-- Image or Video inserted here -->
+            </div>
+            <div class="modal-info">
+                <div class="modal-header-row">
+                    <span class="modal-type-badge" id="modal-type-badge">Photo</span>
+                    <span class="modal-date" id="modal-date">Date</span>
+                </div>
+                <p class="modal-caption" id="modal-caption">Caption text...</p>
+                <div class="modal-footer-row">
+                    <div class="modal-stats" id="modal-stats">❤️ 0 &nbsp; 💬 0</div>
+                    <button class="btn-primary-sm" id="btn-modal-download">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Download This File</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-brand">InstaManager Web Project</p>
+            <p class="footer-disclaimer">This tool is for personal and educational backup use only. Not affiliated with or endorsed by Instagram or Meta.</p>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
