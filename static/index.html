@@ -44,6 +44,9 @@
                 <a href="#downloader" class="nav-link active">Downloader</a>
                 <a href="#how-it-works" class="nav-link">How It Works</a>
                 <a href="#features" class="nav-link">Features</a>
+                <button type="button" class="nav-btn session-btn" onclick="toggleSessionDrawer()">
+                    <span>🔑 Session ID (200+ Posts)</span>
+                </button>
                 <button class="nav-btn" onclick="document.getElementById('username-input').focus()">
                     <span>Start Download</span>
                 </button>
@@ -115,13 +118,40 @@
                         </button>
                     </div>
 
-                    <!-- Demo Quick Links -->
+                    <!-- Demo Quick Links & Batch Info -->
                     <div class="demo-links">
                         <span class="demo-label">Try sample profiles:</span>
                         <button type="button" class="demo-chip" onclick="setSearchUsername('instagram')">@instagram</button>
                         <button type="button" class="demo-chip" onclick="setSearchUsername('natgeo')">@natgeo</button>
+                        <button type="button" class="demo-chip" onclick="setSearchUsername('meenakshidubey1')">@meenakshidubey1</button>
+                        <span class="limit-indicator" style="margin-left:auto;color:#ff85ad;font-size:0.8rem;font-weight:600;">⚡ Batch Limit: 200+ Posts</span>
                     </div>
                 </form>
+
+                <!-- Collapsible Session Auth Drawer -->
+                <div class="session-drawer hidden" id="session-drawer">
+                    <div class="session-drawer-header">
+                        <div class="session-drawer-title">
+                            <span class="session-badge">PRO UNRESTRICTED</span>
+                            <h4>Instagram Session Authentication</h4>
+                        </div>
+                        <button type="button" class="btn-close-sm" onclick="toggleSessionDrawer()">&times;</button>
+                    </div>
+                    <p class="session-drawer-desc">
+                        Instagram restricts anonymous scraping of timeline posts. Connect your Instagram <code>sessionid</code> cookie to automatically load and download all <strong>200+ genuine posts, reels, and stories</strong> with zero rate limits!
+                    </p>
+                    <div class="session-input-row">
+                        <input type="password" id="session-id-input" class="session-input" placeholder="Paste your instagram sessionid cookie (e.g., 685934...%3A...)">
+                        <button type="button" class="btn-primary" onclick="saveSessionId()">Save & Connect</button>
+                        <button type="button" class="btn-outline-sm" onclick="clearSessionId()">Clear</button>
+                    </div>
+                    <div class="session-guide">
+                        <span>💡 How to get in 10s:</span>
+                        <span>1. Open <a href="https://www.instagram.com" target="_blank" rel="noopener">Instagram.com</a> in browser</span> &bull;
+                        <span>2. Press F12 (Inspect) &rarr; Application tab &rarr; Cookies</span> &bull;
+                        <span>3. Copy <code>sessionid</code> value & paste here</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -263,6 +293,24 @@
                 <div class="empty-icon">📭</div>
                 <h4 class="empty-title">No Media Found in this Category</h4>
                 <p class="empty-subtitle">Try switching to the "All" tab to view all loaded posts.</p>
+            </div>
+
+            <!-- Session Required Warning Banner (Shown when anonymous posts are throttled) -->
+            <div class="session-required-banner hidden" id="session-required-banner">
+                <div class="banner-icon">🔒</div>
+                <div class="banner-content">
+                    <h4 class="banner-title">Instagram Requires Session Cookie to Load 200+ Posts</h4>
+                    <p class="banner-desc">
+                        Genuine profile data for <strong id="banner-username">@user</strong> has been verified and loaded! To bypass Instagram's anonymous block and download all <strong>200+ posts, reels, and carousels</strong>, paste your Instagram <code>sessionid</code> below:
+                    </p>
+                    <div class="banner-action-row">
+                        <input type="password" id="inline-session-input" class="banner-input" placeholder="Paste your instagram sessionid cookie here...">
+                        <button type="button" class="btn-primary" onclick="saveInlineSession()">Unlock 200+ Posts</button>
+                    </div>
+                    <p class="banner-tip">
+                        💡 Tip: You can also paste any direct Reel or Post URL (e.g. <code>instagram.com/reel/...</code>) in the search bar to download that specific item directly!
+                    </p>
+                </div>
             </div>
 
             <!-- Media Gallery Grid -->

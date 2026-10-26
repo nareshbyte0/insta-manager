@@ -21,6 +21,8 @@ from urllib.parse import urlparse
 
 from flask import Flask, request, jsonify, send_from_directory, send_file, Response
 from flask_cors import CORS
+import html
+import subprocess
 import instaloader
 import requests
 
@@ -46,29 +48,6 @@ DEFAULT_HEADERS = {
     "Referer": "https://www.instagram.com/",
 }
 
-# Reliable, fast public media streams for fallback/demo accounts
-SAMPLE_VIDEOS = [
-    "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    "https://media.w3.org/2010/05/sintel/trailer.mp4",
-    "https://www.w3schools.com/tags/movie.mp4",
-]
-
-SAMPLE_PHOTOS = [
-    "https://images.unsplash.com/photo-1682687220063-4742bd7fd538?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1682687220199-d0124f48f95b?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1080&q=80",
-    "https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&w=1080&q=80",
-]
-
-
 def clean_username(raw_input: str) -> str:
     """Extract clean username or shortcode from input (handles @username or full URL)."""
     raw = raw_input.strip()
@@ -82,9 +61,111 @@ def clean_username(raw_input: str) -> str:
     return raw.replace("@", "").strip("/").strip()
 
 
-def init_instaloader():
-    """Create an Instaloader instance configured for safe metadata extraction."""
-    return instaloader.Instaloader(
+def parse_count(s: str) -> int:
+    """Safely convert Instagram count string (e.g. 856, 1.2M, 50.4K) to integer."""
+    if not s:
+        return 0
+    clean = str(s).replace(",", "").strip().lower()
+    try:
+        if clean.endswith("k"):
+            return int(float(clean[:-1]) * 1000)
+        elif clean.endswith("m"):
+            return int(float(clean[:-1]) * 1000000)
+        elif clean.endswith("b"):
+            return int(float(clean[:-1]) * 1000000000)
+        return int(float(clean))
+    except Exception:
+        return 0
+
+
+def scrape_genuine_profile(username: str) -> dict:
+    """
+    Scrape 100% genuine Instagram profile metadata directly from live Instagram
+    using social crawler headers to avoid empty JS app shells.
+    Extracts real full name, real username, real bio, real follower/following/post counts,
+    real verified status, and real HD profile picture on scontent.cdninstagram.com.
+    """
+    clean_user = username.replace("@", "").strip("/").strip()
+    headers = {
+        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    
+    url = f"https://www.instagram.com/{clean_user}/"
+    try:
+        r = requests.get(url, headers=headers, timeout=12)
+        if r.status_code == 200:
+            text = r.text
+            
+            # 1. Avatar from og:image
+            og_image_m = re.search(r'<meta property="og:image" content="(.*?)"', text)
+            avatar_url = html.unescape(og_image_m.group(1)) if og_image_m else None
+            
+            # 2. Title -> Full name
+            og_title_m = re.search(r'<meta property="og:title" content="(.*?)"', text)
+            full_name = clean_user
+            if og_title_m:
+                raw_title = html.unescape(og_title_m.group(1))
+                m = re.match(r'^(.*?)\s*\(@', raw_title)
+                if m:
+                    full_name = m.group(1).strip()
+                    
+            # 3. Description -> Followers, Following, Posts, Bio
+            meta_desc_m = re.search(r'<meta content="(.*?)" name="description"', text) or re.search(r'<meta name="description" content="(.*?)"', text)
+            og_desc_m = re.search(r'<meta property="og:description" content="(.*?)"', text)
+            desc_text = html.unescape(meta_desc_m.group(1)) if meta_desc_m else (html.unescape(og_desc_m.group(1)) if og_desc_m else "")
+            
+            followers = 0
+            following = 0
+            posts = 0
+            bio = ""
+            
+            if desc_text:
+                f_m = re.search(r'([\d\.,kKmMbB]+)\s*Followers', desc_text, re.IGNORECASE)
+                if f_m:
+                    followers = parse_count(f_m.group(1))
+                    
+                fg_m = re.search(r'([\d\.,kKmMbB]+)\s*Following', desc_text, re.IGNORECASE)
+                if fg_m:
+                    following = parse_count(fg_m.group(1))
+                    
+                p_m = re.search(r'([\d\.,kKmMbB]+)\s*Posts', desc_text, re.IGNORECASE)
+                if p_m:
+                    posts = parse_count(p_m.group(1))
+                    
+                bio_m = re.search(r'on Instagram:\s*"(.*?)"\s*$', desc_text, re.DOTALL)
+                if bio_m:
+                    bio = bio_m.group(1)
+                elif " - " in desc_text:
+                    parts = desc_text.split(" - ", 1)
+                    if len(parts) > 1 and "See Instagram" not in parts[1]:
+                        bio = parts[1]
+
+            is_verified = 'is_verified":true' in text or 'Verified' in desc_text or 'verified":true' in text
+            is_private = "This account is private" in text or 'is_private":true' in text
+
+            return {
+                "username": clean_user,
+                "full_name": full_name,
+                "biography": bio,
+                "followers": followers,
+                "followees": following,
+                "media_count": posts,
+                "is_private": is_private,
+                "is_verified": is_verified,
+                "profile_pic_url": avatar_url,
+                "external_url": f"https://instagram.com/{clean_user}",
+            }
+    except Exception as e:
+        print(f"Scraper error for {clean_user}: {e}")
+        
+    return None
+
+
+def init_instaloader(session_id=None):
+    """Create an Instaloader instance configured for genuine metadata extraction."""
+    loader = instaloader.Instaloader(
         download_pictures=False,
         download_videos=False,
         download_video_thumbnails=False,
@@ -92,123 +173,91 @@ def init_instaloader():
         download_comments=False,
         save_metadata=False,
         compress_json=False,
-        max_connection_attempts=2,
-        request_timeout=15,
+        max_connection_attempts=1,
+        request_timeout=8,
     )
+    
+    # Priority: explicitly passed session_id -> environment variable -> saved session file
+    effective_session = session_id or os.environ.get("INSTAGRAM_SESSIONID")
+    if not effective_session:
+        session_file = os.path.join(BASE_DIR, ".instagram_session")
+        if os.path.exists(session_file):
+            try:
+                with open(session_file, "r", encoding="utf-8") as f:
+                    effective_session = f.read().strip()
+            except Exception:
+                pass
+                
+    if effective_session:
+        loader.context._session.cookies.set("sessionid", effective_session, domain=".instagram.com")
+        
+    return loader
 
 
-def generate_fallback_profile(username: str, requested_types=None):
-    """
-    Generate an unconstrained, rich fallback profile with working media
-    when Instagram's API rate-limits, errors on business schemas, or restricts access.
-    Guarantees every username always works without restriction!
-    """
-    if requested_types is None:
-        requested_types = ["everything"]
-
-    clean_name = username.replace("_", " ").replace(".", " ").title()
-    seed = sum(ord(c) for c in username)
-    random.seed(seed)
-
-    follower_count = random.randint(12000, 8500000)
-    following_count = random.randint(150, 950)
-    total_posts = random.randint(30, 420)
-
-    # Curated avatar
-    avatar_idx = seed % len(SAMPLE_PHOTOS)
-    avatar_url = SAMPLE_PHOTOS[avatar_idx]
-
-    profile_info = {
-        "username": username,
-        "full_name": clean_name,
-        "biography": f"✨ Official Creator & Storyteller | @{username}\n📸 Moments, Visuals & Daily Lifestyle\n✉️ Collaborations: contact@{username}.com",
-        "followers": follower_count,
-        "followees": following_count,
-        "media_count": total_posts,
-        "is_private": False,
-        "is_verified": follower_count > 500000,
-        "profile_pic_url": avatar_url,
-        "external_url": f"https://instagram.com/{username}",
-    }
-
-    # Generate 16 diverse media posts
-    items = []
-    counts = {"all": 0, "photos": 0, "videos": 0, "reels": 0, "carousels": 0}
-
-    now = datetime.now()
-
-    media_templates = [
-        {"type": "reels", "caption": "Living for golden hour moments ✨ Enjoying the journey! #reels #viral #vibe"},
-        {"type": "photos", "caption": "Perspective is everything 📷 Captured in high resolution. #photography #aesthetic"},
-        {"type": "carousels", "caption": "Swipe through the weekend photo dump ➡️ 1, 2, or 3? #photodump #memories"},
-        {"type": "reels", "caption": "Quick BTS from yesterday's shoot 🎥 Tag someone who needs to see this! #creator"},
-        {"type": "videos", "caption": "Cinematic visual story 🎬 Turn sound on! #cinema #visuals"},
-        {"type": "photos", "caption": "Aesthetic vibes only 🌿 Natural lighting always wins. #nature #wanderlust"},
-        {"type": "carousels", "caption": "Details and close-ups from today 🤍 Swipe for more! #lifestyle #mood"},
-        {"type": "reels", "caption": "Daily reminder to keep pushing forward 🌟 #inspire #mindset #reels"},
-        {"type": "photos", "caption": "Chasing sunsets across the globe 🌅 #travel #sunset #explore"},
-        {"type": "videos", "caption": "Full motion recap of the latest project 📽️ #film #edit #video"},
-        {"type": "carousels", "caption": "Behind the lens with the team 📸 4 slide collection. #behindthescenes"},
-        {"type": "reels", "caption": "Summer vibes in motion ☀️ Which clip was your favorite? #summer #motion"},
-        {"type": "photos", "caption": "Simplicity is the ultimate sophistication 🖤 #portrait #minimal"},
-        {"type": "reels", "caption": "Trending audio test ⚡ Dropping the full version soon! #audio #trending"},
-        {"type": "photos", "caption": "Architectural wonders in the city 🏙️ #city #architecture"},
-        {"type": "carousels", "caption": "A week in pictures 🗓️ Tap to expand slides! #weeklydump"},
-    ]
-
-    for idx, tmpl in enumerate(media_templates):
-        m_type = tmpl["type"]
-        if "everything" not in requested_types and m_type not in requested_types:
-            continue
-
-        shortcode = f"{username[:3]}_{''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=8))}"
-        post_date = (now - timedelta(days=idx * 2 + 1)).strftime("%b %d, %Y")
-        post_ts = int((now - timedelta(days=idx * 2 + 1)).timestamp())
-
-        is_video = m_type in ["reels", "videos"]
-        video_url = SAMPLE_VIDEOS[idx % len(SAMPLE_VIDEOS)] if is_video else None
-        display_url = SAMPLE_PHOTOS[(idx + 2) % len(SAMPLE_PHOTOS)]
-
+def extract_single_post(shortcode: str, session_id=None):
+    """Extract a single genuine post or reel with high fidelity using Instaloader or yt-dlp."""
+    loader = init_instaloader(session_id)
+    try:
+        post = instaloader.Post.from_shortcode(loader.context, shortcode)
+        is_video = post.is_video
+        typename = post.typename
+        media_type = (
+            "reels" if typename == "GraphVideo" and getattr(post, "product_type", "") == "clips"
+            else ("videos" if is_video else ("carousels" if typename == "GraphSidecar" else "photos"))
+        )
+        
         slides = []
-        if m_type == "carousels":
-            num_slides = random.randint(2, 4)
-            for s_idx in range(num_slides):
-                s_photo = SAMPLE_PHOTOS[(idx + s_idx + 1) % len(SAMPLE_PHOTOS)]
+        if typename == "GraphSidecar":
+            for s_idx, node in enumerate(post.get_sidecar_nodes()):
+                s_is_video = node.is_video
                 slides.append({
                     "index": s_idx + 1,
-                    "is_video": False,
-                    "display_url": s_photo,
-                    "video_url": None,
+                    "is_video": s_is_video,
+                    "display_url": node.display_url,
+                    "video_url": node.video_url if s_is_video else None,
                 })
-
+                
         item = {
-            "id": shortcode,
-            "shortcode": shortcode,
-            "type": m_type,
-            "typename": "GraphVideo" if is_video else ("GraphSidecar" if m_type == "carousels" else "GraphImage"),
+            "id": post.shortcode,
+            "shortcode": post.shortcode,
+            "type": media_type,
+            "typename": typename,
             "is_video": is_video,
-            "display_url": display_url,
-            "video_url": video_url,
-            "caption": tmpl["caption"],
-            "likes": random.randint(350, 48000),
-            "comments": random.randint(12, 1200),
-            "date": post_date,
-            "timestamp": post_ts,
+            "display_url": post.url,
+            "video_url": post.video_url if is_video else None,
+            "caption": post.caption or "",
+            "likes": post.likes,
+            "comments": post.comments,
+            "date": post.date_utc.strftime("%b %d, %Y") if post.date_utc else "",
+            "timestamp": int(post.date_utc.timestamp()) if post.date_utc else 0,
             "slides": slides,
-            "video_duration": random.randint(15, 60) if is_video else None,
         }
-
-        items.append(item)
-        counts[m_type] += 1
-        counts["all"] += 1
-
-    return {
-        "success": True,
-        "profile": profile_info,
-        "items": items,
-        "counts": counts,
-        "total_posts": total_posts,
-    }
+        return item
+    except Exception:
+        # Fallback to yt-dlp for direct reel extraction
+        try:
+            cmd = ["yt-dlp", "--dump-json", "--no-warnings", f"https://www.instagram.com/reel/{shortcode}/"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=12)
+            if res.returncode == 0:
+                info = json.loads(res.stdout)
+                return {
+                    "id": shortcode,
+                    "shortcode": shortcode,
+                    "type": "reels",
+                    "typename": "GraphVideo",
+                    "is_video": True,
+                    "display_url": info.get("thumbnail") or "",
+                    "video_url": info.get("url") or "",
+                    "caption": info.get("description") or info.get("title") or "",
+                    "likes": info.get("like_count") or 0,
+                    "comments": info.get("comment_count") or 0,
+                    "date": datetime.now().strftime("%b %d, %Y"),
+                    "timestamp": int(datetime.now().timestamp()),
+                    "slides": [],
+                }
+        except Exception:
+            pass
+    return None
 
 
 # ─── FRONTEND ROUTES ───────────────────────────────────────────
@@ -225,45 +274,122 @@ def serve_static(filename):
 
 # ─── API ROUTES ────────────────────────────────────────────────
 
+@app.route("/api/check-session")
+def check_session():
+    """Check if an Instagram session ID is currently active on the server."""
+    active = bool(os.environ.get("INSTAGRAM_SESSIONID"))
+    if not active:
+        session_file = os.path.join(BASE_DIR, ".instagram_session")
+        if os.path.exists(session_file):
+            try:
+                with open(session_file, "r", encoding="utf-8") as f:
+                    active = bool(f.read().strip())
+            except Exception:
+                pass
+    return jsonify({"has_session": active})
+
+
+@app.route("/api/save-session", methods=["POST"])
+def save_session():
+    """Save an Instagram session ID so all queries can load 200+ posts without rate limits."""
+    data = request.get_json() or {}
+    session_id = data.get("session_id", "").strip()
+    if not session_id:
+        return jsonify({"error": "Empty session ID"}), 400
+        
+    os.environ["INSTAGRAM_SESSIONID"] = session_id
+    session_file = os.path.join(BASE_DIR, ".instagram_session")
+    try:
+        with open(session_file, "w", encoding="utf-8") as f:
+            f.write(session_id)
+        return jsonify({"success": True, "message": "Instagram Session connected successfully!"})
+    except Exception as e:
+        return jsonify({"success": True, "message": "Session saved in memory!"})
+
+
 @app.route("/api/fetch-profile", methods=["POST"])
 def fetch_profile():
     """
-    Fetch Instagram media for ANY user without restrictions.
-    Tries real Instagram API first; seamlessly falls back to high-quality
-    media if Instagram restricts, rate-limits, or blocks the profile.
+    Fetch genuine Instagram data for ANY user.
+    - Always loads genuine profile info (real name, bio, follower count, real CDN avatar)
+    - Enforces loading only posts with limit no less than 200 (limit >= 200)
+    - Uses Instagram session if provided to fetch all genuine posts without throttling
     """
     data = request.get_json() or {}
     raw_user = data.get("username", "")
     username = clean_username(raw_user)
-    limit = int(data.get("limit", 36))
+    
+    # Requirement: "load only post no less than 200"
+    requested_limit = int(data.get("limit", 200))
+    limit = max(requested_limit, 200)
+    
     requested_types = data.get("content_types", ["everything"])
+    session_id = data.get("session_id", "").strip() or None
 
     if not username:
         return jsonify({"error": "Please enter a valid Instagram username or link"}), 400
 
-    loader = init_instaloader()
+    # Direct post / reel URL check (e.g., /p/SHORTCODE or /reel/SHORTCODE)
+    if any(k in raw_user for k in ["/p/", "/reel/"]):
+        single_item = extract_single_post(username, session_id)
+        if single_item:
+            counts = {"all": 1, "photos": 0, "videos": 0, "reels": 0, "carousels": 0}
+            counts[single_item["type"]] = 1
+            return jsonify({
+                "success": True,
+                "profile": {
+                    "username": f"post_{username}",
+                    "full_name": f"Instagram Post ({username})",
+                    "biography": single_item["caption"][:100] if single_item["caption"] else "Direct post download",
+                    "followers": single_item["likes"],
+                    "followees": single_item["comments"],
+                    "media_count": 1,
+                    "is_private": False,
+                    "is_verified": False,
+                    "profile_pic_url": single_item["display_url"],
+                    "external_url": f"https://instagram.com/p/{username}",
+                },
+                "items": [single_item],
+                "counts": counts,
+                "total_posts": 1,
+                "loaded_count": 1,
+            })
 
+    # Step 1: Scrape 100% GENUINE Profile Info from Live Instagram
+    profile_info = scrape_genuine_profile(username)
+    
+    loader = init_instaloader(session_id)
+    items = []
+    counts = {"all": 0, "photos": 0, "videos": 0, "reels": 0, "carousels": 0}
+    instaloader_succeeded = False
+    rate_limited = False
+
+    # Step 2: Extract real posts using Instaloader (up to limit >= 200)
     try:
         profile = instaloader.Profile.from_username(loader.context, username)
         
-        # Build profile info from live Instagram profile
-        profile_info = {
-            "username": profile.username,
-            "full_name": profile.full_name or profile.username,
-            "biography": profile.biography or "",
-            "followers": profile.followers,
-            "followees": profile.followees,
-            "media_count": profile.mediacount,
-            "is_private": profile.is_private,
-            "is_verified": profile.is_verified,
-            "profile_pic_url": str(profile.profile_pic_url),
-            "external_url": profile.external_url or "",
-        }
+        # Merge rich metadata from Instaloader
+        if not profile_info:
+            profile_info = {
+                "username": profile.username,
+                "full_name": profile.full_name or profile.username,
+                "biography": profile.biography or "",
+                "followers": profile.followers,
+                "followees": profile.followees,
+                "media_count": profile.mediacount,
+                "is_private": profile.is_private,
+                "is_verified": profile.is_verified,
+                "profile_pic_url": str(profile.profile_pic_url),
+                "external_url": profile.external_url or f"https://instagram.com/{username}",
+            }
+        else:
+            profile_info["media_count"] = max(profile_info.get("media_count", 0), profile.mediacount)
+            profile_info["followers"] = max(profile_info.get("followers", 0), profile.followers)
+            if profile.profile_pic_url:
+                profile_info["profile_pic_url"] = str(profile.profile_pic_url)
+            profile_info["is_private"] = profile.is_private
+            profile_info["is_verified"] = profile.is_verified or profile_info.get("is_verified", False)
 
-        items = []
-        counts = {"all": 0, "photos": 0, "videos": 0, "reels": 0, "carousels": 0}
-
-        # Safe extraction directly from post._node without triggering 401 GraphQL queries
         post_iter = profile.get_posts()
         count = 0
         for post in post_iter:
@@ -338,23 +464,47 @@ def fetch_profile():
             except Exception:
                 continue
 
-        # If live extraction found items, return them!
-        if items:
-            return jsonify({
-                "success": True,
-                "profile": profile_info,
-                "items": items,
-                "counts": counts,
-                "total_posts": profile.mediacount,
-            })
+        instaloader_succeeded = True
 
     except Exception as e:
-        # If Instaloader failed (business schema bug, private profile, or rate-limited)
-        pass
+        err_msg = str(e)
+        if "401" in err_msg or "require_login" in err_msg or "429" in err_msg:
+            rate_limited = True
 
-    # Seamless fallback: ensure the website ALWAYS works for all users!
-    fallback = generate_fallback_profile(username, requested_types)
-    return jsonify(fallback)
+    # If no profile info could be scraped
+    if not profile_info:
+        return jsonify({
+            "error": f"Instagram profile '@{username}' could not be reached. Please check the username or try another profile."
+        }), 404
+
+    # If account is private
+    if profile_info.get("is_private"):
+        return jsonify({
+            "success": True,
+            "profile": profile_info,
+            "items": [],
+            "counts": counts,
+            "is_private": True,
+            "error": f"@{username} is a private Instagram account. Only approved followers can view these posts."
+        })
+
+    response_data = {
+        "success": True,
+        "profile": profile_info,
+        "items": items,
+        "counts": counts,
+        "total_posts": profile_info.get("media_count", len(items)),
+        "loaded_count": len(items),
+    }
+
+    if not items and (rate_limited or not instaloader_succeeded):
+        response_data["requires_session"] = True
+        response_data["message"] = (
+            "Instagram requires a session cookie to load all 200+ posts for this profile anonymously. "
+            "Connect your Instagram Session ID in Settings to unlock and download all 200+ posts!"
+        )
+
+    return jsonify(response_data)
 
 
 @app.route("/api/download-file")

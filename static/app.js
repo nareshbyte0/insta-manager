@@ -14,6 +14,7 @@ let state = {
     activeFilter: "all",
     filterTypes: ["everything"],
     isFetching: false,
+    sessionId: localStorage.getItem("ig_session_id") || "",
 };
 
 // ─── DOM Helpers ──────────────────────────────────────────────
@@ -125,8 +126,9 @@ async function handleSearch(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 username: rawUser,
-                limit: 36,
+                limit: 200,
                 content_types: state.filterTypes,
+                session_id: state.sessionId,
             }),
         });
 
@@ -152,7 +154,11 @@ async function handleSearch(event) {
         state.selectedShortcodes = new Set(state.items.map(i => i.shortcode));
 
         renderDashboard(data);
-        showToast(`Loaded ${state.items.length} media items for @${state.username}! ✨`, "success");
+        if (data.requires_session && state.items.length === 0) {
+            showToast("Genuine profile loaded! Connect Instagram session below to load all 200+ posts.", "info");
+        } else {
+            showToast(`Loaded ${state.items.length} genuine media items for @${state.username}! ✨`, "success");
+        }
 
     } catch (err) {
         showError("Network error. Please make sure the InstaManager server is running.");
@@ -230,7 +236,16 @@ function renderDashboard(data) {
         btn.classList.toggle("active", btn.getAttribute("data-tab") === "all");
     });
 
-    // 3. Render Cards
+    // 3. Session Required Banner handling
+    if (data.requires_session && state.items.length === 0) {
+        show($("session-required-banner"));
+        if ($("banner-username")) $("banner-username").textContent = `@${p.username}`;
+        if ($("inline-session-input")) $("inline-session-input").value = state.sessionId;
+    } else {
+        hide($("session-required-banner"));
+    }
+
+    // 4. Render Cards
     renderMediaCards();
     updateSelectionUI();
 
@@ -651,3 +666,84 @@ document.addEventListener("keydown", (e) => {
         closePreviewModal();
     }
 });
+
+// ─── Session Management ───────────────────────────────────────
+
+function toggleSessionDrawer() {
+    const drawer = $("session-drawer");
+    if (!drawer) return;
+    const isHidden = drawer.classList.contains("hidden");
+    if (isHidden) {
+        show(drawer);
+        const input = $("session-id-input");
+        if (input) {
+            input.value = state.sessionId;
+            input.focus();
+        }
+    } else {
+        hide(drawer);
+    }
+}
+
+async function saveSessionId() {
+    const input = $("session-id-input");
+    const val = input ? input.value.trim() : "";
+    if (!val) {
+        showToast("Please paste a valid sessionid cookie", "error");
+        return;
+    }
+    state.sessionId = val;
+    localStorage.setItem("ig_session_id", val);
+
+    try {
+        await fetch("/api/save-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: val }),
+        });
+    } catch (e) {
+        // saved in localStorage
+    }
+
+    showToast("Instagram Session connected! Now fetching all 200+ posts...", "success");
+    hide($("session-drawer"));
+
+    // If an account is currently entered or displayed, reload with session!
+    const userInput = $("username-input");
+    if (userInput && userInput.value.trim()) {
+        handleSearch(new Event("submit"));
+    }
+}
+
+async function saveInlineSession() {
+    const input = $("inline-session-input");
+    const val = input ? input.value.trim() : "";
+    if (!val) {
+        showToast("Please enter a valid sessionid", "error");
+        return;
+    }
+    state.sessionId = val;
+    localStorage.setItem("ig_session_id", val);
+
+    try {
+        await fetch("/api/save-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: val }),
+        });
+    } catch (e) {
+        // saved in localStorage
+    }
+
+    showToast("Session connected! Loading 200+ posts now...", "success");
+    handleSearch(new Event("submit"));
+}
+
+function clearSessionId() {
+    state.sessionId = "";
+    localStorage.removeItem("ig_session_id");
+    const input = $("session-id-input");
+    if (input) input.value = "";
+    showToast("Session cleared. Browsing anonymously.", "info");
+}
+

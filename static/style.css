@@ -1605,3 +1605,208 @@ body {
         text-align: center;
     }
 }
+
+/* ─── SESSION AUTH & 200+ POSTS DRAWER ─────────────────────── */
+
+.session-btn {
+    background: rgba(225, 48, 108, 0.15) !important;
+    border: 1px solid rgba(225, 48, 108, 0.4) !important;
+    color: #ff6594 !important;
+    font-size: 0.85rem !important;
+    padding: 8px 16px !important;
+}
+
+.session-btn:hover {
+    background: rgba(225, 48, 108, 0.3) !important;
+    border-color: #ff6594 !important;
+    box-shadow: 0 0 15px rgba(225, 48, 108, 0.4);
+}
+
+.session-drawer {
+    background: linear-gradient(135deg, rgba(25, 20, 35, 0.95), rgba(15, 12, 22, 0.95));
+    border: 1px solid rgba(225, 48, 108, 0.35);
+    border-radius: var(--radius-lg);
+    padding: 22px 26px;
+    margin-top: 18px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    animation: fadeIn 0.3s ease;
+}
+
+.session-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.session-drawer-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.session-drawer-title h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.session-badge {
+    background: linear-gradient(135deg, #f09433, #e6683c, #bc1888);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.session-drawer-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+
+.session-drawer-desc code {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff85ad;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+}
+
+.session-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.session-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+    transition: var(--transition-fast);
+}
+
+.session-input:focus {
+    border-color: #ff6594;
+    outline: none;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.3);
+}
+
+.session-guide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    align-items: center;
+}
+
+.session-guide a {
+    color: #ff85ad;
+    text-decoration: underline;
+}
+
+.session-guide code {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ff85ad;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.btn-close-sm {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.btn-close-sm:hover {
+    color: #fff;
+}
+
+/* Session Required Warning Banner in Dashboard */
+
+.session-required-banner {
+    background: linear-gradient(135deg, rgba(35, 25, 45, 0.95), rgba(20, 15, 30, 0.95));
+    border: 1px solid rgba(225, 48, 108, 0.4);
+    border-radius: var(--radius-xl);
+    padding: 28px 32px;
+    margin-bottom: 30px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    box-shadow: 0 12px 35px rgba(225, 48, 108, 0.15);
+}
+
+.session-required-banner .banner-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    padding: 10px;
+    background: rgba(225, 48, 108, 0.15);
+    border-radius: var(--radius-md);
+}
+
+.session-required-banner .banner-content {
+    flex: 1;
+}
+
+.session-required-banner .banner-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+.session-required-banner .banner-desc {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.session-required-banner .banner-action-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.session-required-banner .banner-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: #fff;
+    padding: 11px 16px;
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.session-required-banner .banner-input:focus {
+    border-color: #ff6594;
+    outline: none;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.3);
+}
+
+.session-required-banner .banner-tip {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    margin: 0;
+}
+
