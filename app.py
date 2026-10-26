@@ -28,7 +28,11 @@ app = Flask(__name__, static_folder="static")
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
+# In serverless environments like Vercel, the root filesystem is read-only; use /tmp
+if os.environ.get("VERCEL"):
+    DOWNLOADS_DIR = "/tmp/downloads"
+else:
+    DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
 DEFAULT_HEADERS = {
@@ -602,7 +606,8 @@ def open_folder(username):
     folder_path = os.path.join(DOWNLOADS_DIR, clean_username(username))
     if os.path.exists(folder_path):
         try:
-            os.startfile(folder_path)
+            if hasattr(os, "startfile"):
+                os.startfile(folder_path)
             return jsonify({"success": True, "message": f"Opened folder for @{username}"})
         except Exception as e:
             return jsonify({"error": f"Could not open folder: {str(e)}"}), 500
