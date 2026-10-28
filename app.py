@@ -19,10 +19,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
+# pyrefly: ignore [missing-import]
 from flask import Flask, request, jsonify, send_from_directory, send_file, Response
 from flask_cors import CORS
 import html
 import subprocess
+# pyrefly: ignore [missing-import]
 import instaloader
 import requests
 
